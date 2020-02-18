@@ -45,7 +45,7 @@ Open `devices.py` and update the `DEVICE_LIST` to add device information for mon
     "host": "<ip-address/hostname>",
     "username": "<username>",
     "password": "<password>",
-    "interval" : "<seconds in interval for monitoring>"
+    "interval" : "<interval in seconds for monitoring>"
 },
 ...
 ]
