@@ -43,6 +43,12 @@ output_dir="logs"
 command_to_execute_remotely = "show platform hardware qfp active datapath utilization"
 
 
+# Headers for the CSV file
+csv_header_input="Input:Priority(pps)-5 secs,Input:Priority(pps)-1 min,Input:Priority(pps)-5 min,Input:Priority(pps)-60 min,Input:Priority(bps)-5 secs,Input:Priority(bps)-1 min,Input:Priority(bps)-5 min,Input:Priority(bps)-60 min,Input:Non-Priority(pps)-5 secs,Input:Non-Priority(pps)-1 min,Input:Non-Priority(pps)-5 min,Input:Non-Priority(pps)-60 min,Input:Non-Priority(bps)-5 secs,Input:Non-Priority(bps)-1 min,Input:Non-Priority(bps)-5 min,Input:Non-Priority(bps)-60 min,Input:Total(pps)-5 secs,Input:Total(pps)-1 min,Input:Total(pps)-5 min,Input:Total(pps)-60 min,Input:Total(bps)-5 secs,Input:Total(bps)-1 min,Input:Total(bps)-5 min,Input:Total(bps)-60 min"
+csv_header_output="Output:Priority(pps)-5 secs,Output:Priority(pps)-1 min,Output:Priority(pps)-5 min,Output:Priority(pps)-60 min,Output:Priority(bps)-5 secs,Output:Priority(bps)-1 min,Output:Priority(bps)-5 min,Output:Priority(bps)-60 min,Output:Non-Priority(pps)-5 secs,Output:Non-Priority(pps)-1 min,Output:Non-Priority(pps)-5 min,Output:Non-Priority(pps)-60 min,Output:Non-Priority(bps)-5 secs,Output:Non-Priority(bps)-1 min,Output:Non-Priority(bps)-5 min,Output:Non-Priority(bps)-60 min,Output:Total(pps)-5 secs,Output:Total(pps)-1 min,Output:Total(pps)-5 min,Output:Total(pps)-60 min,Output:Total(bps)-5 secs,Output:Total(bps)-1 min,Output:Total(bps)-5 min,Output:Total(bps)-60 min"
+csv_header_processing="Processing:Load(pct)-5 secs,Processing:Load(pct)-1 min,Processing:Load(pct)-5 min,Processing:Load(pct)-60 min"
+
+
 # Method for Appending the command output to the file
 def write_to_file(filename,content,ext=".log"):
 	# Create the output folder if not available
@@ -50,6 +56,40 @@ def write_to_file(filename,content,ext=".log"):
 	output_file=output_dir+"/"+filename+'-'+time.strftime('%Y-%m-%d')+ext
 	with open(output_file,'a') as f:
 		f.write(content)
+
+def write_to_csv(filename,content,ext=".csv"):
+	# Create the output folder if not available
+	Path(output_dir).mkdir(parents=True, exist_ok=True)
+	output_file=output_dir+"/"+filename+'-'+time.strftime('%Y-%m-%d')+ext
+	if os.path.exists(output_file)==False:
+		# Writing the CSV Header for the first time only
+		with open(output_file,'a') as f:
+			f.write("{},{},{},{}\n".format('timestamp',csv_header_input,csv_header_output,csv_header_processing))
+	data_to_write=str(datetime.now())+","+content
+	with open(output_file,'a') as f:
+		f.write(data_to_write)
+
+# Method to check whether the word exist in the given sentence
+def wordInLine(words_list,line):
+	for word in words_list:
+		if word in line:
+			return True
+	return False
+
+# Transforming the command output to CSV
+def transformOutputToCSV(content):
+	contentLines=content.splitlines()
+	contentLines = list(filter(None, contentLines))
+	word_match_list=["datapath","CPP","terminal","show"]
+	csvContent=""
+	for line in contentLines:
+		if wordInLine(word_match_list,line) != True:
+			content_for_append="{},{},{},{}".format(line[23:36].strip(),line[37:50].strip(),line[51:64].strip(),line[65:78].strip())
+			if(content_for_append.strip(',')!=''):
+				if(csvContent!=""):
+					csvContent+=","
+				csvContent+=content_for_append
+	return csvContent+"\n"
 
 # Method to create remote shell on the device
 def remote_command_capture(device_info):
@@ -67,6 +107,7 @@ def invoke_command_scheduled(ssh,device_info):
 	while(True):
 		output=ssh.sendCommand(command_to_execute_remotely)
 		write_to_file(device_info['alias'],output)
+		write_to_csv(device_info['alias'],transformOutputToCSV(output.strip()))
 		time.sleep(int(device_info['interval']))
 
 def signal_handler(signal, frame):
